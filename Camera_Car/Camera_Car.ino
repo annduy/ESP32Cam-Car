@@ -19,6 +19,8 @@ std::vector<MOTOR_PINS> motorPins =
   {12, 14, 2},  //LEFT_MOTOR  Pins (EnB, IN3, IN4)
 };
 #define LIGHT_PIN 4
+#define INDICATOR_PIN 33
+
 
 #define UP 1
 #define DOWN 2
@@ -71,6 +73,10 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
     <style>
     .arrows {
       font-size:40px;
+      color:red;
+    }
+    .circularArrows {
+      font-size:50px;
       color:red;
     }
     td.button {
@@ -148,9 +154,9 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
         <td></td>
       </tr>
       <tr>
-        <td class="button" ontouchstart='sendButtonInput("MoveCar","3")' ontouchend='sendButtonInput("MoveCar","0")'><span class="arrows" >&#8678;</span></td>
+        <td class="button" ontouchstart='sendButtonInput("MoveCar","3")' ontouchend='sendButtonInput("MoveCar","0")'><span class="circularArrows" >&#8634;</span></td>
         <td class="button"></td>    
-        <td class="button" ontouchstart='sendButtonInput("MoveCar","4")' ontouchend='sendButtonInput("MoveCar","0")'><span class="arrows" >&#8680;</span></td>
+        <td class="button" ontouchstart='sendButtonInput("MoveCar","4")' ontouchend='sendButtonInput("MoveCar","0")'><span class="circularArrows" >&#8635;</span></td>
       </tr>
       <tr>
         <td></td>
@@ -401,8 +407,8 @@ void setupCamera()
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
   
-  config.frame_size = FRAMESIZE_VGA;
-  config.jpeg_quality = 10;
+  config.frame_size = FRAMESIZE_QVGA;
+  config.jpeg_quality = 25;
   config.fb_count = 1;
 
   // camera init
@@ -485,7 +491,7 @@ void setup(void)
   IPAddress IP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
   Serial.println(IP);
-
+  
   server.on("/", HTTP_GET, handleRoot);
   server.onNotFound(handleNotFound);
       
@@ -499,6 +505,9 @@ void setup(void)
   Serial.println("HTTP server started");
 
   setupCamera();
+  // initialization completed => on the indicator
+  pinMode(INDICATOR_PIN, OUTPUT);
+  digitalWrite(INDICATOR_PIN, LOW);
 }
 
 
@@ -507,5 +516,5 @@ void loop()
   wsCamera.cleanupClients(); 
   wsCarInput.cleanupClients(); 
   sendCameraPicture(); 
-  Serial.printf("SPIRam Total heap %d, SPIRam Free Heap %d\n", ESP.getPsramSize(), ESP.getFreePsram());
+  //Serial.printf("SPIRam Total heap %d, SPIRam Free Heap %d\n", ESP.getPsramSize(), ESP.getFreePsram());
 }
