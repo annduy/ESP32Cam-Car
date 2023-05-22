@@ -1,3 +1,9 @@
+#include <WiFiManager.h>
+#include <strings_en.h>
+#include <wm_consts_en.h>
+#include <wm_strings_en.h>
+#include <wm_strings_es.h>
+
 #include "esp_camera.h"
 #include <Arduino.h>
 #include <WiFi.h>
@@ -5,6 +11,8 @@
 #include <ESPAsyncWebServer.h>
 #include <iostream>
 #include <sstream>
+
+
 
 struct MOTOR_PINS
 {
@@ -408,7 +416,7 @@ void setupCamera()
   config.pixel_format = PIXFORMAT_JPEG;
   
   config.frame_size = FRAMESIZE_QVGA;
-  config.jpeg_quality = 25;
+  config.jpeg_quality = 30;
   config.fb_count = 1;
 
   // camera init
@@ -487,11 +495,28 @@ void setup(void)
   setUpPinModes();
   Serial.begin(115200);
 
-  WiFi.softAP(ssid, password);
-  IPAddress IP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(IP);
+  // WiFi.softAP(ssid, password);
+  // IPAddress IP = WiFi.softAPIP();
+  // Serial.print("AP IP address: ");
+  // Serial.println(IP);
   
+   // AN - 20230521 - Start
+  WiFiManager wm;
+
+  bool res;
+  wm.setConnectTimeout(60);
+  res = wm.autoConnect(ssid); // password protected ap
+  if(!res) 
+  {
+    Serial.println("Failed to connect");
+    ESP.restart();
+
+  }
+  Serial.println("WiFi connected");
+      
+  // AN - 20230521 - End
+
+
   server.on("/", HTTP_GET, handleRoot);
   server.onNotFound(handleNotFound);
       
