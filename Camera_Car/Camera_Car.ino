@@ -1,8 +1,11 @@
-#include <WiFiManager.h>
-#include <strings_en.h>
-#include <wm_consts_en.h>
-#include <wm_strings_en.h>
-#include <wm_strings_es.h>
+// #include <Wire.h>
+// #include "LiquidCrystal_I2C.h"
+
+#include "WiFiManager.h"
+#include "strings_en.h"
+#include "wm_consts_en.h"
+#include "wm_strings_en.h"
+#include "wm_strings_es.h"
 
 #include "esp_camera.h"
 #include <Arduino.h>
@@ -12,8 +15,19 @@
 #include <iostream>
 #include <sstream>
 
+// #include "PCA9685.h"
 
+// An - 20230525
+//#include <Wire.h> 
+// #include "LiquidCrystal_I2C.h"
+//LiquidCrystal_I2C lcd(0x27,16,2);
+// An - 20230525 - End
 
+// //PCA9685 pwmController;                  // Library using default B000000 (A5-A0) i2c address, and default Wire @400kHz
+// PCA9685 pwmController(B000000,Wire,10000);
+
+WiFiManager wm;
+  
 struct MOTOR_PINS
 {
   int pinEn;  
@@ -23,9 +37,23 @@ struct MOTOR_PINS
 
 std::vector<MOTOR_PINS> motorPins = 
 {
-  {12, 13, 15},  //RIGHT_MOTOR Pins (EnA, IN1, IN2)
-  {12, 14, 2},  //LEFT_MOTOR  Pins (EnB, IN3, IN4)
+  {12, 14, 2},  //FRONT_LEFT_MOTOR Pins (EnA, IN1, IN2)
+  {12, 1, 3},  //FRONT_RIGHT_MOTOR  Pins (EnB, IN3, IN4)
 };
+
+// std::vector<MOTOR_PINS> motorPins = 
+// {
+//   {12, 13, 14},  //FRONT_LEFT_MOTOR Pins (EnA, IN1, IN2)
+//   {8, 10, 9},  //FRONT_RIGHT_MOTOR  Pins (EnB, IN3, IN4)
+//   {4, 6, 5},  //BACK_LEFT_MOTOR Pins (EnA, IN1, IN2)
+//   {0, 1, 2},  //BACK_RIGHT_MOTOR  Pins (EnB, IN3, IN4)
+// };
+
+#define I2C_SDA 15
+#define I2C_SCL 13
+// #define PCA9685_DEBUG
+// #define PWM_FULL_ON 4096
+// #define PWM_FULL_OFF 0 
 #define LIGHT_PIN 4
 #define INDICATOR_PIN 33
 
@@ -34,10 +62,18 @@ std::vector<MOTOR_PINS> motorPins =
 #define DOWN 2
 #define LEFT 3
 #define RIGHT 4
+#define UP_LEFT 5
+#define UP_RIGHT 6
+#define DOWN_LEFT 7
+#define DOWN_RIGHT 8
+#define TURN_LEFT 9
+#define TURN_RIGHT 10
 #define STOP 0
 
-#define RIGHT_MOTOR 0
-#define LEFT_MOTOR 1
+#define LEFT_MOTOR 0
+#define RIGHT_MOTOR 1
+#define BACK_LEFT_MOTOR 2
+#define BACK_RIGHT_MOTOR 3
 
 #define FORWARD 1
 #define BACKWARD -1
@@ -176,7 +212,7 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
         <td style="text-align:left"><b>Speed:</b></td>
         <td colspan=2>
          <div class="slidecontainer">
-            <input type="range" min="0" max="255" value="150" class="slider" id="Speed" oninput='sendButtonInput("Speed",value)'>
+            <input type="range" min="0" max="255" value="100" class="slider" id="Speed" oninput='sendButtonInput("Speed",value)'>
           </div>
         </td>
       </tr>        
@@ -244,6 +280,55 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
 </html>
 )HTMLHOMEPAGE";
 
+// void setPINOn(int pinnum)
+// {
+//   pwmController.setChannelOn(pinnum);
+//   //setPINPWM(pinnum, PWM_FULL_ON);
+//   // int timeout = 5;
+//   // uint16_t currentPWM = 10000;
+//   // while (timeout > 0)
+//   // {
+//   //   pwmController.setChannelOn(pinnum);
+//   //   //delay(100);
+//   //   currentPWM = pwmController.getChannelPWM(pinnum);
+//   //   Serial.printf("current PWM of the channel: %d is %d \n",pinnum,currentPWM);
+//   //   if (currentPWM == PWM_FULL_ON) break;
+//   //   timeout--;
+//   // }
+// }
+
+// void setPINOff(int pinnum)
+// {
+//   pwmController.setChannelOff(pinnum);
+//   //setPINPWM(pinnum, PWM_FULL_OFF);
+//   // int timeout = 5;
+//   // uint16_t currentPWM = 10000;
+//   // while (timeout > 0)
+//   // {
+//   //   pwmController.setChannelOff(pinnum);
+//   //   //delay(100);
+//   //   currentPWM = pwmController.getChannelPWM(pinnum);
+//   //   Serial.printf("current PWM of the channel: %d is %d \n",pinnum,currentPWM);
+//   //   if (currentPWM == PWM_FULL_OFF) break;
+//   //   timeout--;
+//   // }
+// }
+
+// void setPINPWM(int pinnum, uint16_t Speed)
+// {
+//   pwmController.setChannelPWM(pinnum,Speed);
+//   // uint16_t currentPWM = 10000;
+//   // int timeout = 5;
+//   // while (timeout > 0)
+//   // {
+//   //   pwmController.setChannelPWM(pinnum,Speed);
+//   //   //delay(100);
+//   //   currentPWM = pwmController.getChannelPWM(pinnum);
+//   //   Serial.printf("current PWM of the channel: %d is %d \n",pinnum,currentPWM);
+//   //   if (currentPWM == Speed) break;
+//   //   timeout--;
+//   // }
+// }
 
 void rotateMotor(int motorNumber, int motorDirection)
 {
@@ -264,9 +349,47 @@ void rotateMotor(int motorNumber, int motorDirection)
   }
 }
 
+
+// void rotateMotor(int motorNumber, int motorDirection)
+// {
+//   if (motorDirection == FORWARD)
+//   {
+//     // full on the PIN1
+//     setPINOn(motorPins[motorNumber].pinIN1);
+//     // full off the PIN2
+//     setPINOff(motorPins[motorNumber].pinIN2);
+//   }
+//   else if (motorDirection == BACKWARD)
+//   {
+//     // full off the PIN1
+//     setPINOff(motorPins[motorNumber].pinIN1);
+//     // full on the PIN2
+//     setPINOn(motorPins[motorNumber].pinIN2);     
+//   }
+//   else
+//   {
+//     // full off the PIN1
+//     setPINOff(motorPins[motorNumber].pinIN1);
+//     // full off the PIN2
+//     setPINOff(motorPins[motorNumber].pinIN2);
+//   }
+// }
+
+// void updateSpeed(int inputValue)
+// {
+//   uint16_t Speed = (inputValue*4096)/255;
+//   Serial.printf("New speed: %d \n", Speed);
+//   for (int i = 0; i < motorPins.size(); i++)
+//   {
+//     setPINPWM(motorPins[i].pinEn, Speed);
+//   }
+  
+// }
+
+
 void moveCar(int inputValue)
 {
-  Serial.printf("Got value as %d\n", inputValue);  
+  //Serial.printf("Got value as %d\n", inputValue);  
   switch(inputValue)
   {
 
@@ -322,10 +445,10 @@ void onCarInputWebSocketEvent(AsyncWebSocket *server,
   switch (type) 
   {
     case WS_EVT_CONNECT:
-      Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+      //Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
       break;
     case WS_EVT_DISCONNECT:
-      Serial.printf("WebSocket client #%u disconnected\n", client->id());
+      //Serial.printf("WebSocket client #%u disconnected\n", client->id());
       moveCar(0);
       ledcWrite(PWMLightChannel, 0);  
       break;
@@ -340,7 +463,7 @@ void onCarInputWebSocketEvent(AsyncWebSocket *server,
         std::string key, value;
         std::getline(ss, key, ',');
         std::getline(ss, value, ',');
-        Serial.printf("Key [%s] Value[%s]\n", key.c_str(), value.c_str()); 
+        //Serial.printf("Key [%s] Value[%s]\n", key.c_str(), value.c_str()); 
         int valueInt = atoi(value.c_str());     
         if (key == "MoveCar")
         {
@@ -349,6 +472,7 @@ void onCarInputWebSocketEvent(AsyncWebSocket *server,
         else if (key == "Speed")
         {
           ledcWrite(PWMSpeedChannel, valueInt);
+          //updateSpeed(valueInt);
         }
         else if (key == "Light")
         {
@@ -374,11 +498,11 @@ void onCameraWebSocketEvent(AsyncWebSocket *server,
   switch (type) 
   {
     case WS_EVT_CONNECT:
-      Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+      //Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
       cameraClientId = client->id();
       break;
     case WS_EVT_DISCONNECT:
-      Serial.printf("WebSocket client #%u disconnected\n", client->id());
+      //Serial.printf("WebSocket client #%u disconnected\n", client->id());
       cameraClientId = 0;
       break;
     case WS_EVT_DATA:
@@ -423,14 +547,14 @@ void setupCamera()
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) 
   {
-    Serial.printf("Camera init failed with error 0x%x", err);
+    //Serial.printf("Camera init failed with error 0x%x", err);
     return;
   }  
 
   if (psramFound())
   {
     heap_caps_malloc_extmem_enable(20000);  
-    Serial.printf("PSRAM initialized. malloc to take memory from psram above this size");    
+    //Serial.printf("PSRAM initialized. malloc to take memory from psram above this size");    
   }  
 }
 
@@ -445,7 +569,7 @@ void sendCameraPicture()
   camera_fb_t * fb = esp_camera_fb_get();
   if (!fb) 
   {
-      Serial.println("Frame buffer could not be acquired");
+      //Serial.println("Frame buffer could not be acquired");
       return;
   }
 
@@ -465,15 +589,18 @@ void sendCameraPicture()
   }
   
   unsigned long  startTime3 = millis();  
-  Serial.printf("Time taken Total: %d|%d|%d\n",startTime3 - startTime1, startTime2 - startTime1, startTime3-startTime2 );
+  //Serial.printf("Time taken Total: %d|%d|%d\n",startTime3 - startTime1, startTime2 - startTime1, startTime3-startTime2 );
 }
 
 void setUpPinModes()
 {
   //Set up PWM
   ledcSetup(PWMSpeedChannel, PWMFreq, PWMResolution);
+  
   ledcSetup(PWMLightChannel, PWMFreq, PWMResolution);
-      
+  
+  pinMode(LIGHT_PIN, OUTPUT);    
+  ledcAttachPin(LIGHT_PIN, PWMLightChannel);    
   for (int i = 0; i < motorPins.size(); i++)
   {
     pinMode(motorPins[i].pinEn, OUTPUT);    
@@ -485,34 +612,62 @@ void setUpPinModes()
   }
   moveCar(STOP);
 
-  pinMode(LIGHT_PIN, OUTPUT);    
-  ledcAttachPin(LIGHT_PIN, PWMLightChannel);
+  
 }
 
 
 void setup(void) 
 {
   setUpPinModes();
-  Serial.begin(115200);
+  // Wire.begin(I2C_SDA,I2C_SCL);
+  // LCD.init();
+  // LCD.init();
+  // LCD.backlight();
+  //Serial.begin(115200);
+  
 
+  //pwmController.setChannelPWM(12,1000);
+  //pwmController.setChannelOn(13);
+  //pwmController.setChannelOff(14);
+
+  //pwmController.setChannelPWM(8,1000);
+  //pwmController.setChannelOn(10);
+  //pwmController.setChannelOff(9);
+
+  //pwmController.setChannelPWM(4,1000);
+  //pwmController.setChannelOn(6);
+  //pwmController.setChannelOff(5);
+
+  //pwmController.setChannelPWM(0,1000);
+  //pwmController.setChannelOn(1);
+  //pwmController.setChannelOff(2);
+
+
+    
+  
   // WiFi.softAP(ssid, password);
   // IPAddress IP = WiFi.softAPIP();
   // Serial.print("AP IP address: ");
   // Serial.println(IP);
   
    // AN - 20230521 - Start
-  WiFiManager wm;
+  
 
   bool res;
   wm.setConnectTimeout(60);
+  // LCD.setCursor(0,0);
+  // LCD.print("Wifi is starting");
   res = wm.autoConnect(ssid); // password protected ap
   if(!res) 
   {
-    Serial.println("Failed to connect");
+    //Serial.println("Failed to connect");
     ESP.restart();
 
   }
-  Serial.println("WiFi connected");
+  // LCD.setCursor(0,0);
+  // LCD.print("WiFi connected");
+  // LCD.setCursor(0,1);
+  // LCD.print(WiFi.localIP());
       
   // AN - 20230521 - End
 
@@ -527,10 +682,22 @@ void setup(void)
   server.addHandler(&wsCarInput);
 
   server.begin();
-  Serial.println("HTTP server started");
+  //Serial.println("HTTP server started");
 
   setupCamera();
-  // initialization completed => on the indicator
+  //delay(500);
+  // Wire.begin(I2C_SDA,I2C_SCL);
+  // pwmController.resetDevices();
+  // //pwmController.init();
+  // pwmController.init(PCA9685_OutputDriverMode_TotemPole,
+  //              PCA9685_OutputEnabledMode_Normal,
+  //              PCA9685_OutputDisabledMode_Low,
+  //              PCA9685_ChannelUpdateMode_AfterAck,
+  //              PCA9685_PhaseBalancer_None); 
+  // //pwmController.setPWMFrequency(500);             
+  // moveCar(STOP);
+  // updateSpeed(150);
+  // initialization completed => turn on the indicator
   pinMode(INDICATOR_PIN, OUTPUT);
   digitalWrite(INDICATOR_PIN, LOW);
 }
@@ -541,5 +708,9 @@ void loop()
   wsCamera.cleanupClients(); 
   wsCarInput.cleanupClients(); 
   sendCameraPicture(); 
+  LCD.setCursor(0,0);
+  LCD.print("My RobotCar");
+  LCD.setCursor(0,1);
+  LCD.print(WiFi.localIP());
   //Serial.printf("SPIRam Total heap %d, SPIRam Free Heap %d\n", ESP.getPsramSize(), ESP.getFreePsram());
 }
