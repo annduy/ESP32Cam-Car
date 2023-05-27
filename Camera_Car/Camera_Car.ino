@@ -1,11 +1,10 @@
-// #include <Wire.h>
-// #include "LiquidCrystal_I2C.h"
-
-#include "WiFiManager.h"
-#include "strings_en.h"
-#include "wm_consts_en.h"
-#include "wm_strings_en.h"
-#include "wm_strings_es.h"
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <WiFiManager.h>
+#include <strings_en.h>
+#include <wm_consts_en.h>
+#include <wm_strings_en.h>
+#include <wm_strings_es.h>
 
 #include "esp_camera.h"
 #include <Arduino.h>
@@ -20,7 +19,7 @@
 // An - 20230525
 //#include <Wire.h> 
 // #include "LiquidCrystal_I2C.h"
-//LiquidCrystal_I2C lcd(0x27,16,2);
+LiquidCrystal_I2C LCD(0x27,16,2);
 // An - 20230525 - End
 
 // //PCA9685 pwmController;                  // Library using default B000000 (A5-A0) i2c address, and default Wire @400kHz
@@ -661,11 +660,15 @@ void setup(void)
   if(!res) 
   {
     //Serial.println("Failed to connect");
+    // LCD.setCursor(0,0);
+    // LCD.print("Failed. Pls cnx:");
+    // LCD.setCursor(0,1);
+    // LCD.print("192.168.4.1");
     ESP.restart();
 
   }
   // LCD.setCursor(0,0);
-  // LCD.print("WiFi connected");
+  // LCD.print("WiFi connected:");
   // LCD.setCursor(0,1);
   // LCD.print(WiFi.localIP());
       
@@ -708,9 +711,9 @@ void loop()
   wsCamera.cleanupClients(); 
   wsCarInput.cleanupClients(); 
   sendCameraPicture(); 
-  LCD.setCursor(0,0);
-  LCD.print("My RobotCar");
-  LCD.setCursor(0,1);
-  LCD.print(WiFi.localIP());
+  // LCD.setCursor(0,0);
+  // LCD.print("My RobotCar");
+  // LCD.setCursor(0,1);
+  // LCD.print(WiFi.localIP());
   //Serial.printf("SPIRam Total heap %d, SPIRam Free Heap %d\n", ESP.getPsramSize(), ESP.getFreePsram());
 }
